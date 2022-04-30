@@ -8,6 +8,7 @@ use warp::Filter;
 use crate::handlers::connection::handle_connection;
 
 mod handlers;
+mod ocpp;
 mod rpc;
 
 #[cfg(test)]

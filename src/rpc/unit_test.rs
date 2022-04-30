@@ -2,7 +2,6 @@
 #[cfg(test)]
 mod tests {
 
-
     use chrono::Utc;
     use serde_json;
 
@@ -17,7 +16,7 @@ mod tests {
     use rust_ocpp::v2_0_1::messages::status_notification::StatusNotificationRequest;
 
     use crate::rpc::errors::RpcErrorCodes;
-    use crate::rpc::messages::{OcppMessageType};
+    use crate::rpc::messages::OcppMessageType;
 
     #[test]
     fn serialize_deserialize_json_comparison() {
