@@ -9,6 +9,7 @@ use serde_json::{self, Error};
 extern crate pretty_env_logger;
 extern crate tokio;
 use futures::StreamExt;
+use rust_ocpp::v2_0_1::messages::boot_notification::BootNotificationRequest;
 use warp::{ws::Message, Filter};
 
 fn mock_handle_connection(
@@ -51,50 +52,15 @@ async fn ws_call_test() {
     let res = res.to_str().unwrap();
 
     // cast string to real BootNotificationRequest struct
-    let bnr: Result<OcppMessageType, Error> = serde_json::from_str::<OcppMessageType>(&res);
+    let bnr: Result<BootNotificationRequest, Error> = serde_json::from_str::<BootNotificationRequest>(&res);
 
     match bnr {
-        Ok(ocpp_message_type) => match ocpp_message_type {
-            OcppMessageType::Call(_, _, _, _) => {
-                let call: Result<OcppCall, _> = ocpp_message_type.try_into();
-                match call {
-                    Ok(ok_call) => {
-                        // Do some more testing
-                        assert_eq!(ok_call.action, OcppActionEnum::BootNotification);
-                        assert_eq!(ok_call.message_type_id, 2);
-                        assert_eq!(serde_json::to_string(&ok_call).unwrap(), req);
-                    }
-                    _ => {
-                        panic!("Failed to parse Call")
-                    }
-                };
-            }
-            OcppMessageType::CallResult(_, _, _) => {
-                let call_result: Result<OcppCallResult, _> = ocpp_message_type.try_into();
-                match call_result {
-                    Ok(ok_callresult) => {
-                        assert_eq!(ok_callresult.message_type_id, 3);
-                        assert_eq!(serde_json::to_string(&ok_callresult).unwrap(), req);
-                    }
-                    _ => {
-                        panic!("Failed to parse CallResult")
-                    }
-                };
-            }
-            OcppMessageType::CallError(_, _, _, _, _) => {
-                let call_error: Result<OcppCallError, _> = ocpp_message_type.try_into();
-                match call_error {
-                    Ok(ok_callerror) => {
-                        assert_eq!(ok_callerror.message_type_id, 4);
-                    }
-                    _ => panic!("Failed to parse CallError"),
-                }
-            }
+        Ok(o) => {
+            assert_eq!(serde_json::to_string(&o).unwrap(), r#"{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}"#)
         },
-        Err(_) => {
-            panic!("Failed to parse Call")
-        }
-    };
+        Err(_) => {}
+    }
+
 }
 
 #[tokio::test]

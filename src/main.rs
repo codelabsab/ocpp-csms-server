@@ -10,6 +10,7 @@ use crate::handlers::connection::handle_connection;
 mod handlers;
 mod ocpp;
 mod rpc;
+mod provisioning;
 
 #[cfg(test)]
 mod tests;
