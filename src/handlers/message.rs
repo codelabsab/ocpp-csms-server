@@ -9,6 +9,7 @@ use crate::rpc::errors::RpcErrorCodes;
 use crate::rpc::messages::{OcppCall, OcppCallError, OcppCallResult};
 use crate::{handlers::error::handle_error, rpc::messages::OcppMessageType};
 use crate::handlers::workflows::*;
+use crate::provisioning::bootnotification::handle_bootnotification;
 
 use super::response::handle_response;
 
@@ -50,10 +51,21 @@ async fn parse_ocpp_message_type(tx: &mut SplitSink<WebSocket, Message>, ocpp_me
             let call: Result<OcppCall, _> = ocpp_message.clone().try_into();
             match call {
                 Ok(ok_call) => match ok_call.action {
-                    OcppActionEnum::BootNotification => {
+                    OcppActionEnum::Authorize => {
                         match ok_call.payload {
                             OcppPayload::Authorize(kind) => {
                                 handle_authorize(kind, tx).await;
+                            },
+                            _ => {
+                                handle_error(Message::text("failed to parse authorize"), tx).await;
+                                return;
+                            }
+                        };
+                    }
+                    OcppActionEnum::BootNotification => {
+                        match ok_call.payload {
+                            OcppPayload::BootNotification(kind) => {
+                                handle_bootnotification(kind, tx).await;
                             },
                             _ => {
                                 handle_error(Message::text("failed to parse authorize"), tx).await;
@@ -743,10 +755,6 @@ async fn parse_ocpp_message_type(tx: &mut SplitSink<WebSocket, Message>, ocpp_me
                             }
                         }
                     },
-                    _ => {
-                        handle_error(Message::text(RpcErrorCodes::GenericError.description()), tx)
-                            .await;
-                    }
                 },
                 _ => {}
             }
