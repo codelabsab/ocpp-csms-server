@@ -33,33 +33,34 @@ fn mock_handle_connection(
 
 #[tokio::test]
 async fn ws_call_bootnotification_request_test() {
-    // mock a test client
     let mut client = warp::test::ws()
         .handshake(mock_handle_connection())
         .await
         .expect("handshake");
-
-    // Setup our test message that the client will send
     let req = r#"[2,"19223201","BootNotification",{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}]"#;
-
-    // client sends message
     client.send(Message::text(req)).await;
-
-    // receive sent message or die
     let res = client.recv().await.expect("Failed test");
-
-    // convert to str and json
     let res = res.to_str().unwrap();
-
-    // cast string to real BootNotificationRequest struct
     let bnr: Result<BootNotificationRequest, Error> = serde_json::from_str::<BootNotificationRequest>(&res);
-
     match bnr {
         Ok(o) => {
             assert_eq!(serde_json::to_string(&o).unwrap(), r#"{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}"#)
         },
         Err(_) => {}
     }
+}
+
+#[tokio::test]
+async fn ws_test_wrong_message_type_id() {
+    let mut client = warp::test::ws()
+        .handshake(mock_handle_connection())
+        .await
+        .expect("handshake");
+    let req = r#"[3,"19223201","BootNotification",{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}]"#;
+    client.send(Message::text(req)).await;
+    let res = client.recv().await.expect("Failed test");
+    let res = res.to_str().unwrap();
+    assert_eq!(res, "\"message_type_id\" should be 2 if it's a Call");
 
 }
 
