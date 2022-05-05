@@ -3,17 +3,6 @@ use warp::ws::{Message, WebSocket};
 use crate::handlers::response::handle_response;
 use crate::rpc::enums::*;
 
-pub async fn handle_authorize(request: AuthorizeKind, tx: &mut SplitSink<WebSocket, Message>) {
-    match request {
-        AuthorizeKind::Request(req) => {
-            handle_response(Message::text(serde_json::to_string(&req).unwrap()), tx).await;
-        },
-        _ => {
-            handle_response(Message::text("Got response"), tx).await;
-        }
-    }
-}
-
 pub async fn handle_cancel_reservation(request: CancelReservationKind, tx: &mut SplitSink<WebSocket, Message>) {
     match request {
         CancelReservationKind::Request(req) => {
@@ -608,17 +597,6 @@ pub async fn handle_set_variable_monitoring(request: SetVariableMonitoringKind, 
     }
 }
 
-pub async fn handle_set_variables(request: SetVariablesKind, tx: &mut SplitSink<WebSocket, Message>) {
-    match request {
-        SetVariablesKind::Request(req) => {
-            handle_response(Message::text(serde_json::to_string(&req).unwrap()), tx).await;
-        },
-        _ => {
-            handle_response(Message::text("Got response"), tx).await;
-        }
-    }
-}
-
 pub async fn handle_sign_certificate(request: SignCertificateKind, tx: &mut SplitSink<WebSocket, Message>) {
     match request {
         SignCertificateKind::Request(req) => {
@@ -644,17 +622,6 @@ pub async fn handle_status_notification(request: StatusNotificationKind, tx: &mu
 pub async fn handle_transaction_event(request: TransactionEventKind, tx: &mut SplitSink<WebSocket, Message>) {
     match request {
         TransactionEventKind::Request(req) => {
-            handle_response(Message::text(serde_json::to_string(&req).unwrap()), tx).await;
-        },
-        _ => {
-            handle_response(Message::text("Got response"), tx).await;
-        }
-    }
-}
-
-pub async fn handle_trigger_message(request: TriggerMessageKind, tx: &mut SplitSink<WebSocket, Message>) {
-    match request {
-        TriggerMessageKind::Request(req) => {
             handle_response(Message::text(serde_json::to_string(&req).unwrap()), tx).await;
         },
         _ => {

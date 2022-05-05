@@ -8,8 +8,11 @@ use crate::rpc::enums::{OcppActionEnum, OcppPayload};
 use crate::rpc::errors::RpcErrorCodes;
 use crate::rpc::messages::{OcppCall, OcppCallError, OcppCallResult};
 use crate::{handlers::error::handle_error, rpc::messages::OcppMessageType};
+use crate::authorization::authorize::handle_authorize;
 use crate::handlers::workflows::*;
 use crate::provisioning::bootnotification::handle_bootnotification;
+use crate::security::set_variables::handle_set_variables;
+use crate::security::trigger_message::handle_trigger_message;
 
 use super::response::handle_response;
 
@@ -398,7 +401,7 @@ async fn parse_ocpp_message_type(tx: &mut SplitSink<WebSocket, Message>, ocpp_me
                                 handle_meter_values(kind, tx).await;
                             },
                             _ => {
-                                handle_error(Message::text("failed to parse MeterValues"), tx).await;
+                                handle_error(Message::text("failed to parse meter_values"), tx).await;
                                 return;
                             }
                         };

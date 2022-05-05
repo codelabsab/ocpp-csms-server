@@ -11,6 +11,22 @@ mod handlers;
 mod ocpp;
 mod rpc;
 mod provisioning;
+mod authorization;
+mod security;
+mod local_authorization_list;
+mod transactions;
+mod remote_control;
+mod availability;
+mod reservation;
+mod tariff_and_cost;
+mod meter_values;
+mod smart_charging;
+mod firmware_management;
+mod certificate_management;
+mod diagnostics;
+mod display_message;
+mod data_transfer;
+
 
 #[cfg(test)]
 mod tests;
