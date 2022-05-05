@@ -41,11 +41,15 @@ async fn ws_call_bootnotification_request_test() {
     client.send(Message::text(req)).await;
     let res = client.recv().await.expect("Failed test");
     let res = res.to_str().unwrap();
-    let bnr: Result<BootNotificationRequest, Error> = serde_json::from_str::<BootNotificationRequest>(&res);
+    let bnr: Result<BootNotificationRequest, Error> =
+        serde_json::from_str::<BootNotificationRequest>(&res);
     match bnr {
         Ok(o) => {
-            assert_eq!(serde_json::to_string(&o).unwrap(), r#"{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}"#)
-        },
+            assert_eq!(
+                serde_json::to_string(&o).unwrap(),
+                r#"{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}"#
+            )
+        }
         Err(_) => {}
     }
 }
@@ -61,7 +65,6 @@ async fn ws_test_wrong_message_type_id() {
     let res = client.recv().await.expect("Failed test");
     let res = res.to_str().unwrap();
     assert_eq!(res, "\"message_type_id\" should be 2 if it's a Call");
-
 }
 
 #[tokio::test]
@@ -85,15 +88,18 @@ async fn ws_call_authorize_request_test() {
     let res = res.to_str().unwrap();
 
     // cast string to real BootNotificationRequest struct
-    let bnr: Result<BootNotificationRequest, Error> = serde_json::from_str::<BootNotificationRequest>(&res);
+    let bnr: Result<BootNotificationRequest, Error> =
+        serde_json::from_str::<BootNotificationRequest>(&res);
 
     match bnr {
         Ok(o) => {
-            assert_eq!(serde_json::to_string(&o).unwrap(), r#"{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}"#)
-        },
+            assert_eq!(
+                serde_json::to_string(&o).unwrap(),
+                r#"{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}"#
+            )
+        }
         Err(_) => {}
     }
-
 }
 
 #[tokio::test]

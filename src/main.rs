@@ -7,26 +7,25 @@ use warp::Filter;
 
 use crate::handlers::connection::handle_connection;
 
-mod handlers;
-mod ocpp;
-mod rpc;
-mod provisioning;
 mod authorization;
-mod security;
-mod local_authorization_list;
-mod transactions;
-mod remote_control;
 mod availability;
-mod reservation;
-mod tariff_and_cost;
-mod meter_values;
-mod smart_charging;
-mod firmware_management;
 mod certificate_management;
+mod data_transfer;
 mod diagnostics;
 mod display_message;
-mod data_transfer;
-
+mod firmware_management;
+mod handlers;
+mod local_authorization_list;
+mod meter_values;
+mod ocpp;
+mod provisioning;
+mod remote_control;
+mod reservation;
+mod rpc;
+mod security;
+mod smart_charging;
+mod tariff_and_cost;
+mod transactions;
 
 #[cfg(test)]
 mod tests;

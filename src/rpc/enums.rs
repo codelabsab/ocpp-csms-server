@@ -512,6 +512,7 @@ pub enum SetMonitoringLevelKind {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Display)]
 #[serde(untagged)]
+#[allow(clippy::large_enum_variant)]
 pub enum SetNetworkProfileKind {
     Request(SetNetworkProfileRequest),
     Response(SetNetworkProfileResponse),
