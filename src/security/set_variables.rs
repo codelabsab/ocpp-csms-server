@@ -1,18 +1,16 @@
+use axum::extract::ws::Message;
 use crate::handlers::response::handle_response;
 use crate::rpc::enums::SetVariablesKind;
-use futures::stream::SplitSink;
-use warp::ws::{Message, WebSocket};
 
 pub async fn handle_set_variables(
-    request: SetVariablesKind,
-    tx: &mut SplitSink<WebSocket, Message>,
+    request: SetVariablesKind
 ) {
     match request {
         SetVariablesKind::Request(req) => {
-            handle_response(Message::text(serde_json::to_string(&req).unwrap()), tx).await;
+            handle_response(Message::Text(serde_json::to_string(&req).unwrap())).await;
         }
         _ => {
-            handle_response(Message::text("Got response"), tx).await;
+            handle_response(Message::Text("Got response".into())).await;
         }
     }
 }

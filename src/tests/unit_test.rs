@@ -1,5 +1,6 @@
+use std::net::SocketAddr;
 use crate::{
-    handlers::message::handle_message,
+    handlers::message::parse,
     rpc::{
         enums::OcppActionEnum,
         messages::{OcppCall, OcppCallError, OcppCallResult, OcppMessageType},
@@ -10,35 +11,25 @@ extern crate pretty_env_logger;
 extern crate tokio;
 use futures::StreamExt;
 use rust_ocpp::v2_0_1::messages::boot_notification::BootNotificationRequest;
+use tokio::net::TcpListener;
 use warp::{ws::Message, Filter};
-
-fn mock_handle_connection(
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Copy {
-    warp::ws().map(|ws: warp::ws::Ws| {
-        ws.on_upgrade(|websocket| async {
-            let (mut tx, mut rx) = websocket.split();
-            while let Some(result) = rx.next().await {
-                let msg = match result {
-                    Ok(msg) => msg, // We got a real message
-                    Err(_) => {
-                        break;
-                    }
-                };
-
-                handle_message(msg, &mut tx).await;
-            }
-        })
-    })
-}
 
 #[tokio::test]
 async fn ws_call_bootnotification_request_test() {
-    let mut client = warp::test::ws()
-        .handshake(mock_handle_connection())
-        .await
-        .expect("handshake");
+
+    let listener = TcpListener::bind("127.0.0.1:8000".parse::<SocketAddr>().unwrap()).unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        axum::Server::from_tcp(listener)
+            .unwrap()
+            .serve(app().await.into_make_service())
+            .await
+            .unwrap();
+    });
+
+
     let req = r#"[2,"19223201","BootNotification",{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger","vendorName":"VendorX"}}]"#;
-    client.send(Message::text(req)).await;
     let res = client.recv().await.expect("Failed test");
     let res = res.to_str().unwrap();
     let bnr: Result<BootNotificationRequest, Error> =

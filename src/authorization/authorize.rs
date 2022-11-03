@@ -1,15 +1,14 @@
 use crate::handlers::response::handle_response;
 use crate::rpc::enums::AuthorizeKind;
-use futures::stream::SplitSink;
-use warp::ws::{Message, WebSocket};
+use axum::extract::ws::Message;
 
-pub async fn handle_authorize(request: AuthorizeKind, tx: &mut SplitSink<WebSocket, Message>) {
+pub async fn handle_authorize(request: AuthorizeKind) {
     match request {
         AuthorizeKind::Request(req) => {
-            handle_response(Message::text(serde_json::to_string(&req).unwrap()), tx).await;
+            handle_response(Message::Text(serde_json::to_string(&req).unwrap())).await;
         }
         _ => {
-            handle_response(Message::text("Got response"), tx).await;
+            handle_response(Message::Text("Got response".into())).await;
         }
     }
 }

@@ -1,72 +1,145 @@
-// #![deny(warnings)]
+use axum::{extract::{
+    path::ErrorKind,
+    rejection::PathRejection,
+    ws::{Message, WebSocket, WebSocketUpgrade},
+    FromRequestParts, TypedHeader,
+}, response::IntoResponse, routing::{get, get_service}, Router, http, Json};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use log::info;
+use axum::extract::Path;
+use std::{env, net::SocketAddr, path::PathBuf};
+use axum::response::Response;
+use serde_json::{json, to_string, Value};
 
-use std::env;
-use warp::Filter;
+use tower_http::{
+    services::ServeDir,
+    trace::{DefaultMakeSpan, TraceLayer},
+};
+use tower_http::classify::ServerErrorsFailureClass::StatusCode;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use crate::rpc::messages::OcppMessageType;
 
-use crate::handlers::connection::handle_connection;
-
-mod authorization;
-mod availability;
-mod certificate_management;
-mod data_transfer;
-mod diagnostics;
-mod display_message;
-mod firmware_management;
+mod tests;
 mod handlers;
-mod local_authorization_list;
-mod meter_values;
-mod ocpp;
+mod authorization;
 mod provisioning;
-mod remote_control;
-mod reservation;
 mod rpc;
 mod security;
-mod smart_charging;
-mod tariff_and_cost;
-mod transactions;
-
-#[cfg(test)]
-mod tests;
+mod ocpp;
 
 #[tokio::main]
-pub async fn main() {
-    // read loglevel from env or default to info and start logger
-    let loglevel = "RUST_LOG";
-    match env::var(loglevel) {
-        Ok(v) => env::set_var(loglevel, v),
-        _ => env::set_var(loglevel, "info"),
-    };
-    pretty_env_logger::init();
+async fn main() {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "csms=debug,tower_http=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
-    let routes = warp::path("ws")
-        .and(warp::ws())
-        .map(|ws: warp::ws::Ws| ws.on_upgrade(handle_connection));
+    // build our application with some routes
+    let app = Router::new()
+        .route("/ws/:station_id", get(ws_connect))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
+        );
 
-    let cert = option_env!("TLS_CERT").unwrap_or("certs/server.cert");
-    let key = option_env!("TLS_KEY").unwrap_or("certs/server.key");
+    // run it with hyper
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    tracing::debug!("listening on {}", addr);
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+}
 
-    // start with or without tls?
-    match env::var("USE_TLS") {
-        Ok(val) => match val.as_str() {
-            "true" => {
-                info!("Starting server with TLS");
-                warp::serve(routes)
-                    .tls()
-                    .cert_path(cert)
-                    .key_path(key)
-                    .run(([0, 0, 0, 0], 3040))
-                    .await;
-            }
-            _ => {
-                info!("Starting server without TLS");
-                warp::serve(routes).run(([0, 0, 0, 0], 3040)).await;
-            }
-        },
+fn validate_station(station: String) -> Result<(), ErrorUnknownStationId> {
+    if station == "123" {
+        Ok(())
+    } else {
+        Err(ErrorUnknownStationId {})
+    }
+}
+
+struct ErrorUnknownStationId {}
+
+impl IntoResponse for ErrorUnknownStationId {
+    fn into_response(self) -> Response {
+        Response::default()
+    }
+}
+
+async fn ws_connect(
+    Path(station): Path<String>,
+    ws: WebSocketUpgrade
+) -> impl IntoResponse {
+    tracing::info!("Incoming connection from station {}", station);
+
+    match validate_station(station) {
+        Ok(_) => {
+            ws.on_upgrade(handle_socket)
+        }
         Err(_) => {
-            info!("Starting server without TLS");
-            warp::serve(routes).run(([0, 0, 0, 0], 3040)).await;
+            ws.on_upgrade(handle_error)
         }
     }
+}
+
+async fn handle_socket(mut socket: WebSocket) {
+    if let Some(msg) = socket.recv().await {
+        if let Ok(msg) = msg {
+            match msg {
+                Message::Text(t) => {
+                    tracing::info!("client sent str: {:?}", t);
+                    let msg = r#"[2,"19223201","BootNotification",{"reason":"PowerUp","chargingStation":{"model":"SingleSocketCharger", "vendorName":"VendorX"}}]"#.to_string();
+                    let ocpp_message_type = serde_json::from_str::<OcppMessageType>(&msg).unwrap();
+                    tracing::info!("client sent str: {:?}", ocpp_message_type);
+                }
+                Message::Binary(_) => {
+                    tracing::info!("client sent binary data");
+                }
+                Message::Ping(_) => {
+                    tracing::info!("socket ping");
+                }
+                Message::Pong(_) => {
+                    tracing::info!("socket pong");
+                }
+                Message::Close(_) => {
+                    tracing::info!("client disconnected");
+                    return;
+                }
+            }
+        } else {
+            tracing::info!("client disconnected");
+            return;
+        }
+    }
+
+    loop {
+        if socket
+            .send(Message::Text(String::from("Hi!")))
+            .await
+            .is_err()
+        {
+            tracing::info!("client disconnected");
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
+}
+
+async fn handle_error(mut socket: WebSocket) {
+
+    if socket
+        .send(Message::Text(String::from("Not a valid station")))
+        .await
+        .is_err()
+    {
+        tracing::info!("client disconnected");
+        return;
+    }
+    // close socket
+    tracing::info!("closing socket due to invalid station");
+    let _ = socket.close().await;
 }
